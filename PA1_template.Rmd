@@ -1,25 +1,215 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template"
+output: html_document
+runtime: shiny
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-## Loading and preprocessing the data
+Median of the first column
+
+```{r}
+
+# Read the csv file
+data <- read.csv("activity.csv", header = TRUE, sep = ",")
+
+#Getting column 1
+a = data[ , c(1)]
+
+#Calculanting the mean ignoring NA values
+mean(a, na.rm=TRUE)
+
+```
+
+Data preparation, this chuck of code mainly ignores NAs in the table and also creates a new data where the amount of steps are added for each day. We use the ggplot2 library to make the plots.
+
+```{r}
+# library
+library(ggplot2)
+
+#Getting columns 1 and 2 ignoring NAs
+b = data[, c(1,2,3)]
+#ignores the rows with NAs
+X=b[complete.cases(b), ]
+
+#Doing the sum of steps per day
+a_contar=X
+a_contar$date <- as.Date(a_contar$date)
+a_contarnuevo = aggregate(a_contar["steps"], by=a_contar["date"], sum)
+
+#setting the x-axis
+#days=a_contarnuevo[, c(1)]
+
+```
+
+
+Here we make an histogram of the sum of the steps per day, note that it's not very usable as it is, because an histogram usually counts the amount of repetitions of a value in a data frame.
+```{r}
+#basic histogram
+p <- ggplot(a_contarnuevo,aes(x=date)) + geom_histogram( binwidth=5, fill="#69b3a2", color="#e9ecef", alpha=0.9) +
+    ggtitle("Steps per day")
+p
+
+```
+
+A better way to represent the data here is to use a simple bar plot, here, the data on the y-axis is the actual amount of steps per day:
+
+```{r}
+# Barplot
+
+ggplot(a_contarnuevo, aes(x=date, y=steps)) + 
+  geom_bar(stat = "identity", width=4) 
+
+```
+
+
+In this chunk we calculate the Mean and Median of the total steps taken each day
+
+The mean is:
+
+```{r}
+media <- mean(a_contarnuevo$steps)
+mediana <- median(a_contarnuevo$steps)
+media
+```
+
+The median is:
+
+```{r}
+mediana      
+```
+
+Note that they are very close!
+
+Taking the data necessary for the time series plot:
+
+```{r}
+
+
+#Taking the average of steps for each 5-min interval
+
+por_mins = aggregate(a_contar["steps"], by=a_contar["interval"], mean)
+
+#setting the x-axis
+#days=a_contarnuevo[, c(1)]
+
+```
+
+
+Now for the time series plot:
+```{r}
+g <- ggplot(por_mins, aes(x=interval, y=steps)) +
+  geom_line() + 
+  xlab("")
+g
+```
+
+As we can see, it looks like de maximum value occours around de 800-ish interval, but let's find it exactly:
+
+```{r}
+maximo <- max(por_mins$steps)
+maximo
+```
+
+Which is in the row:
+
+```{r}
+posicion <- which.max(por_mins$steps)
+posicion
+```
+
+So, it must be in the interval:
+
+```{r}
+por_mins[posicion, 1]
+```
+
+
+Now we have to calculate the number of missing values:
+
+```{r}
+sum(is.na (data))
+```
+
+To replace the NA values, let's take the average of steps per interval:
+
+
+```{r}
+
+
+#Taking the average of steps per day
+
+por_dia = aggregate(a_contar["steps"], by=a_contar["date"], mean)
+mean(por_dia$steps)
+#setting the x-axis
+#days=a_contarnuevo[, c(1)]
+
+```
+
+
+Here we replace the NA values with the mean just calculated and then calculate the new mean, median and:
+```{r}
+library(dplyr)
+library(tidyr)
+my_df = data
+newdata = my_df %>% 
+        ##group_by(date) %>% 
+        mutate_at(vars(steps), ~replace_na(., 37.3826))
+
+#Doing the sum of steps per day
+newdata$date <- as.Date(newdata$date)
+sumanewdata = aggregate(newdata["steps"], by=newdata["date"], sum)
+
+#basic histogram
+p <- ggplot(sumanewdata,aes(x=date)) + geom_histogram( binwidth=5, fill="#69b3a2", color="#e9ecef", alpha=0.9) +
+    ggtitle("Steps per day")
+p
+
+# Barplot
+
+ggplot(sumanewdata, aes(x=date, y=steps)) + 
+  geom_bar(stat = "identity", width=4) 
+
+```
+
+As we can see, the overall "shape" of the data has changed, this is of course because we added new values, and while it may be a "logical" to value to add, it has an effect on the statistics that represent the data.
+
+Let's see the mean and median:
+The new mean is
+```{r}
+mean(sumanewdata$steps)
+```
+
+and the new median is
+```{r}
+median(sumanewdata$steps)
+```
+Note that the mean doesn't change, because we added a mean value on the missing ones. The median changed a little but since it is a "central meausure", the overall change on it is minimum.
+
+
+Now for the last part, let's add the new variables to the new filled data:
+
+```{r}
+newdata <- cbind(factor = 0, newdata)
+#Setting the values of dates to days
+newdata$factor <- weekdays(newdata$date, abbreviate = TRUE)
+
+newdata <- cbind(wdayorwend = 0, newdata)
+newdata$wdayorwend <- ifelse(newdata$factor %in% c("Sat", "Sun"), "weekend", "weekday") 
+```
+
+
+And now let's make the panel plot:
+
+```{r}
+panelplot <- ggplot(data = newdata, aes(x = interval, y = steps, group = wdayorwend, colour = wdayorwend)) +
+    geom_line() +
+    facet_wrap(~ wdayorwend)
+panelplot
+```
 
 
 
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+That's it, thanks a lot for checking this out!
